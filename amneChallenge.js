@@ -74,22 +74,6 @@ const test = new PriceWindowFinder('./data.txt');
 
 test.printOutput();
 
-var makeData = function() {
-  var length = 9;
-  var string = `${length} 4 \n`
-  for (var i = 0; i <= length; i++) {
-    price = Math.floor(Math.random() * 10);
-    string += price + ' ';
-  }
-  console.log(string)
-  fs.writeFileSync('./data.txt', string , 'utf8');
-}
-
-// makeData()
-
-// fs.writeFileSync('./data.txt', '' , 'utf8');
-
-
 
 /* 
 For this problem, you are given N days of average home sale price data, and a fixed window size K . 
