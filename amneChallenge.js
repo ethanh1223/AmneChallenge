@@ -5,6 +5,12 @@ class PriceWindowFinder {
   constructor(file) {
     this.file = file;
     this.dataObj = {};
+    this.visitedSet = {};
+    this.firstRangeIncreasing = 0;
+    this.firstRangeDecreasing = 0;
+    this.firstRangeTotal = 0;
+    this.touchesOfLastNumber = 0;
+    this.fullLengthRunner = false;
   }
 
   printOutput() {
@@ -18,9 +24,46 @@ class PriceWindowFinder {
       for (var j = i - this.dataObj.k; j < i; j++) {
         priceWindow.push(Number(this.dataObj.priceData[j]));
       }
-      const increasingSubranges = this.findSubranges(priceWindow, 'increasing');
-      const decreasingSubranges = this.findSubranges(priceWindow, 'decreasing');
-      console.log(increasingSubranges - decreasingSubranges);
+
+      const currentStartingIndex = i - this.dataObj.k
+
+      this.visitedSet[currentStartingIndex] = {};
+
+      if (this.visitedSet[currentStartingIndex - 1]) {
+        if (this.visitedSet[currentStartingIndex - 1].rangesExcludingFirstNumberIncludingLastNumber < 0) {
+          if (priceWindow[priceWindow.length - 1] < priceWindow[priceWindow.length - 2]) {
+            this.visitedSet[currentStartingIndex].totalRanges = this.visitedSet[currentStartingIndex - 1].rangesWithoutFirstNumber + this.visitedSet[currentStartingIndex - 1].rangesExcludingFirstNumberIncludingLastNumber - 1;
+          } else {
+            this.visitedSet[currentStartingIndex].totalRanges = this.visitedSet[currentStartingIndex - 1].rangesWithoutFirstNumber + 1;
+          }
+        } else {
+          if (priceWindow[priceWindow.length - 1] > priceWindow[priceWindow.length - 2]) {
+            this.visitedSet[currentStartingIndex].totalRanges = this.visitedSet[currentStartingIndex - 1].rangesWithoutFirstNumber + this.visitedSet[currentStartingIndex - 1].rangesExcludingFirstNumberIncludingLastNumber + 1;
+          } else {
+            this.visitedSet[currentStartingIndex].totalRanges = this.visitedSet[currentStartingIndex - 1].rangesWithoutFirstNumber - 1;
+          }
+        }
+      } else {
+        const increasingSubranges = this.findSubranges(priceWindow, 'increasing', currentStartingIndex);
+        const decreasingSubranges = this.findSubranges(priceWindow, 'decreasing', currentStartingIndex);
+        this.visitedSet[currentStartingIndex].totalRanges = increasingSubranges - decreasingSubranges;
+      }
+      
+      this.visitedSet[currentStartingIndex].rangesWithoutFirstNumber = this.visitedSet[currentStartingIndex].totalRanges  - this.firstRangeTotal;
+
+      if (this.fullLengthRunner) {
+        this.visitedSet[currentStartingIndex].rangesExcludingFirstNumberIncludingLastNumber = this.touchesOfLastNumber - 1;
+      } else {
+        this.visitedSet[currentStartingIndex].rangesExcludingFirstNumberIncludingLastNumber = this.touchesOfLastNumber;
+      }
+
+      console.log(currentStartingIndex, this.visitedSet[currentStartingIndex].totalRanges)
+
+      this.firstRangeDecreasing = 0;
+      this.firstRangeIncreasing = 0;
+      this.firstRangeTotal = 0;
+      this.touchesOfLastNumber = 0;
+      this.fullLengthRunner = false;
     }
   }
 
@@ -35,7 +78,7 @@ class PriceWindowFinder {
     this.dataObj.priceData = dataArray[1].split(' ');
   }
 
-  findSubranges(priceWindow, type) {
+  findSubranges(priceWindow, type, currentStartingIndex) {
     var count = 0;
 
     if (type === 'increasing') {
@@ -54,6 +97,14 @@ class PriceWindowFinder {
   DFS(priceWindow, i, type, localCount) {
     var localCount = localCount || 0;
 
+    if (i === priceWindow.length - 1) {
+      if (type === 'increasing') {
+        this.touchesOfLastNumber++;
+      } else {
+        this.touchesOfLastNumber--;
+      }
+    }
+
     if ((type === 'increasing') && (i + 1 === priceWindow.length || priceWindow[i + 1] <= priceWindow[i])) {
       return localCount; 
     } 
@@ -64,6 +115,23 @@ class PriceWindowFinder {
 
     else {
       localCount ++;
+      if (i === 0) {
+        if (type === 'increasing') {
+          this.firstRangeIncreasing = this.DFS(priceWindow, i + 1, type, localCount);
+        } else {
+          this.firstRangeDecreasing = this.DFS(priceWindow, i + 1, type, localCount);
+        }
+
+        if (this.touchesOfLastNumber !== 0) {
+
+          this.fullLengthRunner = true;
+
+          this.touchesOfLastNumber = 0;
+        }
+
+        this.firstRangeTotal = this.firstRangeIncreasing - this.firstRangeDecreasing;
+      }
+
       return this.DFS(priceWindow, i + 1, type, localCount);
     }
   }
@@ -75,8 +143,8 @@ const test = new PriceWindowFinder('./data.txt');
 test.printOutput();
 
 var makeData = function() {
-  var length = 9;
-  var string = `${length} 4 \n`
+  var length = 8;
+  var string = `${length} 5 \n`
   for (var i = 0; i <= length; i++) {
     price = Math.floor(Math.random() * 10);
     string += price + ' ';
